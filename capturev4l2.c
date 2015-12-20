@@ -120,10 +120,10 @@ int print_caps(int fd, int sockfd)
                 fmt.fmt.pix.field);
         n = write(sockfd,(char*)(&(fmt.fmt.pix.width)),4);
         if (n < 0) 
-         error("ERROR writing to socket");
+         printf("ERROR writing to socket");
         n = write(sockfd,(char*)(&(fmt.fmt.pix.height)),4);
         if (n < 0) 
-         error("ERROR writing to socket");
+         printf("ERROR writing to socket");
         return 0;
 }
  
@@ -158,7 +158,7 @@ int init_mmap(int fd, int sockfd)
  
     n = write(sockfd,(char*)(&(buf.length)),4);
     if (n < 0) 
-         error("ERROR writing to socket");
+         printf("ERROR writing to socket");
 
     return 0;
 }
@@ -226,11 +226,11 @@ int capture_and_send_image(int fd, int sockfd)
     int n;
     n = write(sockfd,(char*)&i,4);
     if (n < 0) 
-         error("ERROR writing to socket");
+         printf("ERROR writing to socket");
 
     n = write(sockfd,buffer,i);
     if (n < 0) 
-         error("ERROR writing to socket");
+         printf("ERROR writing to socket");
 
  
     cvWaitKey(15);
@@ -287,7 +287,7 @@ int main(int argc, char *argv[])
 
     /* open socket and connect to server */
     if (sockfd < 0) 
-        error("ERROR opening socket");
+        printf("ERROR opening socket");
     server = gethostbyname(argv[1]);
     if (server == NULL) {
         fprintf(stderr,"ERROR, no such host\n");
@@ -300,7 +300,7 @@ int main(int argc, char *argv[])
          server->h_length);
     serv_addr.sin_port = htons(portno);
     if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
-        error("ERROR connecting");
+        printf("ERROR connecting");
 
     /* open camera and initialize */
     fd = open(camera_device, O_RDWR);

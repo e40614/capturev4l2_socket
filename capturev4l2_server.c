@@ -60,9 +60,18 @@ int main(int argc, char *argv[])
             uint32_t framesize;
             uint32_t buffersize;
             // while(1){
-                read(newsockfd, (char*) &width, 4);
-                read(newsockfd, (char*) &height, 4);
-                read(newsockfd, (char*) &buffersize, 4);
+                if(read(newsockfd, (char*) &width, 4) == 0){
+                printf("client closed\n");
+                  return 0;
+                }
+                if(read(newsockfd, (char*) &height, 4)==0){
+                printf("client closed\n");
+                  return 0;
+                }
+                if(read(newsockfd, (char*) &buffersize, 4) == 0){
+                printf("client closed\n");
+                  return 0;
+                }
             //     if ( read(newsockfd, &c, 1) == 1) {
             //          *mesptr ++=c;
             //          if (c == ']')
@@ -75,7 +84,7 @@ int main(int argc, char *argv[])
             // height = atoi(strtok(NULL,"]"));
 
                 char buffer[buffersize];
-
+                char *bufferptr;
 
 
             // Mat  img = Mat::zeros( height,width, CV_8UC3);
@@ -83,15 +92,31 @@ int main(int argc, char *argv[])
             // char sockData[imgSize];
             // int bytes;
          //Receive data here
+                int n;
             while(1){
-                read(newsockfd, (char*) &framesize, 4);
-                read(newsockfd, buffer, framesize);
+
+                if(read(newsockfd, (char*) &framesize, 4) == 0){
+                  printf("client closed\n");
+                  return 0;
+                }
+                bufferptr = buffer;
+                while( (n = read(newsockfd, bufferptr, framesize)) != framesize){
+                  if(n == 0){
+                    printf("client closed\n");
+                    return 0;
+                  }
+                  bufferptr += n;
+                  framesize -= n;
+                }
+                // memset(&buffer[framesize],0,buffersize-framesize-1);
                 IplImage* frame;
                 CvMat cvmat = cvMat(height, width, CV_8UC3, (void*)buffer);
                 frame = cvDecodeImage(&cvmat, 1);
                 cvNamedWindow("window",CV_WINDOW_AUTOSIZE);
                 cvShowImage("window", frame);
+                cvReleaseImage(&frame);
                 cvWaitKey(10);
+                // free(frame);
                // for (int i = 0; i < imgSize; i += bytes) {
                //      if ((bytes = recv(newsockfd, sockData +i, imgSize  - i, 0)) == -1) {
                //          printf("recv failed\n");
