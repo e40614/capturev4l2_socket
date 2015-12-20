@@ -165,6 +165,8 @@ int init_mmap(int fd, int sockfd)
  
 int capture_and_send_image(int fd, int sockfd)
 {
+    static fd_set fds;
+    static char camActive = 0;
     struct v4l2_buffer buf = {0};
     buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     buf.memory = V4L2_MEMORY_MMAP;
@@ -174,16 +176,18 @@ int capture_and_send_image(int fd, int sockfd)
         perror("Query Buffer");
         return 1;
     }
- 
+if(!camActive){ 
     if(-1 == xioctl(fd, VIDIOC_STREAMON, &buf.type))
     {
         perror("Start Capture");
         return 1;
     }
  
-    fd_set fds;
+ //   fd_set fds;
     FD_ZERO(&fds);
     FD_SET(fd, &fds);
+    camActive = 1;
+}
     struct timeval tv = {0};
     tv.tv_sec = 2;
     int r = select(fd+1, &fds, NULL, NULL, &tv);
