@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
      char *mesptr = messagerec;
      struct sockaddr_in serv_addr, cli_addr;
      int n;
+     char killbuf[20];
 
 
     // startWindowThread();
@@ -56,54 +57,53 @@ int main(int argc, char *argv[])
         if((childpid = fork()) < 0)
             error("server:fork error");
         else if(childpid == 0){//child
-            // char c;
             uint32_t framesize;
             uint32_t buffersize;
-            // while(1){
+
                 if(read(newsockfd, (char*) &width, 4) == 0){
                 printf("client closed\n");
-                  return 0;
+                    printf("exit %d\n",(int)getpid());
+                    sprintf(killbuf,"kill %d",(int)getpid());
+                    n = system((const char*)killbuf);
+                  exit(0);
                 }
                 if(read(newsockfd, (char*) &height, 4)==0){
                 printf("client closed\n");
-                  return 0;
+                    printf("exit %d\n",(int)getpid());
+                    sprintf(killbuf,"kill %d",(int)getpid());
+                    n = system((const char*)killbuf);
+                    exit(0);
                 }
                 if(read(newsockfd, (char*) &buffersize, 4) == 0){
                 printf("client closed\n");
-                  return 0;
+                    printf("exit %d\n",(int)getpid());
+                    sprintf(killbuf,"kill %d",(int)getpid());
+                    n = system((const char*)killbuf);
+                    exit(0);
                 }
-            //     if ( read(newsockfd, &c, 1) == 1) {
-            //          *mesptr ++=c;
-            //          if (c == ']')
-            //             break;
-            //     } 
-            // }
-            // mesptr++;
-            // *mesptr = '\0';
-            // width = atoi(strtok(messagerec, "|"));
-            // height = atoi(strtok(NULL,"]"));
 
                 char buffer[buffersize];
                 char *bufferptr;
 
-
-            // Mat  img = Mat::zeros( height,width, CV_8UC3);
-            // int  imgSize = img.total()*img.elemSize();
-            // char sockData[imgSize];
-            // int bytes;
          //Receive data here
                 int n;
             while(1){
 
                 if(read(newsockfd, (char*) &framesize, 4) == 0){
                   printf("client closed\n");
-                  return 0;
+                    printf("exit %d\n",(int)getpid());
+                    sprintf(killbuf,"kill %d",(int)getpid());
+                    n = system((const char*)killbuf);
+                    exit(0);
                 }
                 bufferptr = buffer;
                 while( (n = read(newsockfd, bufferptr, framesize)) != framesize){
                   if(n == 0){
                     printf("client closed\n");
-                    return 0;
+                    printf("exit %d\n",(int)getpid());
+                    sprintf(killbuf,"kill %d",(int)getpid());
+                    n = system((const char*)killbuf);
+                    exit(0);
                   }
                   bufferptr += n;
                   framesize -= n;
@@ -116,37 +116,7 @@ int main(int argc, char *argv[])
                 cvShowImage("window", frame);
                 cvReleaseImage(&frame);
                 cvWaitKey(10);
-                // free(frame);
-               // for (int i = 0; i < imgSize; i += bytes) {
-               //      if ((bytes = recv(newsockfd, sockData +i, imgSize  - i, 0)) == -1) {
-               //          printf("recv failed\n");
-               //      }
-               //      if(bytes == 0){
-               //          printf("client colse\n");
-               //          waitKey(1);
-               //          destroyWindow("Server");
-               //          waitKey(1);
-               //          printf("destoryed\n");
-               //          close(newsockfd);
-               //          close(sockfd);
-               //          printf("close fininsh\n");
-               //          exit(0);
-               //      }
-               // }
 
-             // Assign pixel value to img
-
-             // int ptr=0;
-             //    for (int i = 0;  i < img.rows; i++) {
-             //        for (int j = 0; j < img.cols; j++) {                                     
-             //            img.at<cv::Vec3b>(i,j) = cv::Vec3b(sockData[ptr+ 0],sockData[ptr+1],sockData[ptr+2]);
-             //            ptr=ptr+3;
-             //        }
-             //    }
-
-                 // namedWindow( "Server", CV_WINDOW_AUTOSIZE );// Create a window for display.
-                 // imshow( "Server", img );  
-                 // waitKey(5);
              }
             close(newsockfd);
             close(sockfd);
@@ -154,8 +124,7 @@ int main(int argc, char *argv[])
         }
         //parent
         close(newsockfd);
-                  //     while(wait((int*)0)!=childpid)
-                  // ;
+
 
     
     }

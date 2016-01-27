@@ -183,7 +183,6 @@ if(!camActive){
         return 1;
     }
  
- //   fd_set fds;
     FD_ZERO(&fds);
     FD_SET(fd, &fds);
     camActive = 1;
@@ -202,55 +201,18 @@ if(!camActive){
         perror("Retrieving Frame");
         return 1;
     }
-    int i =0;
-    do{
-        //  if((unsigned char)buffer[i] == 255 && (unsigned char)buffer[i+1] == 218)
-        //     printf("\n'");
-        // printf("%02x ",buffer[i]);
-        // if(i!=0 && (unsigned char)buffer[i-1] == 255 && (unsigned char)buffer[i] == 218)
-        //     printf("\n");
-        // printf("%d ",(int));
-        // if(i%2 == 1 )
-        //     printf(" ");
-        // if(i%30 == 0 && i!=0)
-        //     printf("\n");
-        i++;
-    }while(buffer[i-1]!=255 || buffer[i] !=217);
-    i++;
-    // while(1){
-    // cap>>image; 
-    // image = (image.reshape(0,1));
-    // int  imgSize = image.total()*image.elemSize();
-    // image = imread(argv[3], CV_LOAD_IMAGE_COLOR);
-    // if(! image.data )                              // Check for invalid input
-    // {
-    //     cout <<  "Could not open or find the image" << std::endl ;
-    //     return -1;
-    // }
+
     int n;
-    n = write(sockfd,(char*)&i,4);
+    n = write(sockfd,(char*)&buf.bytesused,4);
     if (n < 0) 
          printf("ERROR writing to socket");
 
-    n = write(sockfd,buffer,i);
+    n = write(sockfd,buffer,buf.bytesused);
     if (n < 0) 
          printf("ERROR writing to socket");
 
  
     cvWaitKey(15);
-    // }
-
-    // int j;
-    // for(j=0;j<20;j++,i++){
-    //     printf("%02x\n",buffer[i]);
-    // }
-    // printf("\n\ni = %d\n",i);
-    // IplImage* frame;
-    // CvMat cvmat = cvMat(height, width, CV_8UC3, (void*)buffer);
-    // frame = cvDecodeImage(&cvmat, 1);
-    // cvNamedWindow("window",CV_WINDOW_AUTOSIZE);
-    // cvShowImage("window", frame);
-    // cvWaitKey(10);
 
     return 0;
 }
@@ -262,9 +224,7 @@ int main(int argc, char *argv[])
     int sockfd, portno, n;
     struct sockaddr_in serv_addr;
     struct hostent *server;
-    // char buffer[256];
-    // char videomessage[30]="";
-    // char numberbuf[10]; 
+
 
     switch(argc){
         case 3:
