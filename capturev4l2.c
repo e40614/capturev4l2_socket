@@ -212,7 +212,7 @@ if(!camActive){
          printf("ERROR writing to socket");
 
  
-    cvWaitKey(15);
+    cvWaitKey(150);
 
     return 0;
 }

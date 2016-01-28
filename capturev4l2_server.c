@@ -8,11 +8,15 @@
 #include <netdb.h> 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include "cv.h"
+#include "cxcore.h"
+#include "highgui.h"
 // #include <iostream>
 // #include <sys/wait.h>
 // using namespace cv;
 // using namespace std;
-
+int min_face_height = 50;
+int min_face_width = 50;
 void error(const char *msg)
 {
     perror(msg);
@@ -86,7 +90,7 @@ int main(int argc, char *argv[])
                 char *bufferptr;
 
          //Receive data here
-                int n;
+                int n,i;
             while(1){
 
                 if(read(newsockfd, (char*) &framesize, 4) == 0){
@@ -109,12 +113,41 @@ int main(int argc, char *argv[])
                   framesize -= n;
                 }
                 // memset(&buffer[framesize],0,buffersize-framesize-1);
-                IplImage* frame;
+                IplImage* image_detect;
                 CvMat cvmat = cvMat(height, width, CV_8UC3, (void*)buffer);
-                frame = cvDecodeImage(&cvmat, 1);
+                image_detect = cvDecodeImage(&cvmat, 1);
+    char cascade_name[]="/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml";
+    // Load cascade
+    CvHaarClassifierCascade* classifier=(CvHaarClassifierCascade*)cvLoad(cascade_name, 0, 0, 0);
+    if(!classifier){
+        fprintf(stderr,"ERROR: Could not load classifier cascade.");
+        return -1;
+    }
+    CvMemStorage* facesMemStorage=cvCreateMemStorage(0);
+    IplImage* tempFrame=cvCreateImage(cvSize(image_detect->width, image_detect->height), IPL_DEPTH_8U, image_detect->nChannels);
+    if(image_detect->origin==IPL_ORIGIN_TL){
+        cvCopy(image_detect, tempFrame, 0);    }
+    else{
+        cvFlip(image_detect, tempFrame, 0);    }
+    cvClearMemStorage(facesMemStorage);
+CvSeq* faces=cvHaarDetectObjects(tempFrame, classifier, facesMemStorage, 1.1, 3, CV_HAAR_DO_CANNY_PRUNING, cvSize(min_face_width, min_face_height), cvSize(0,0));
+    if(faces){
+        for(i=0; i<faces->total; ++i){
+            // Setup two points that define the extremes of the rectangle,
+            // then draw it to the image
+            CvPoint point1, point2;
+            CvRect* rectangle = (CvRect*)cvGetSeqElem(faces, i);
+            point1.x = rectangle->x;
+            point2.x = rectangle->x + rectangle->width;
+            point1.y = rectangle->y;
+            point2.y = rectangle->y + rectangle->height;
+            cvRectangle(tempFrame, point1, point2, CV_RGB(255,0,0), 3, 8, 0);
+        }
+    }
                 cvNamedWindow("window",CV_WINDOW_AUTOSIZE);
-                cvShowImage("window", frame);
-                cvReleaseImage(&frame);
+                cvShowImage("window", tempFrame);
+                cvReleaseImage(&image_detect);
+                cvReleaseImage(&tempFrame);
                 cvWaitKey(10);
 
              }
