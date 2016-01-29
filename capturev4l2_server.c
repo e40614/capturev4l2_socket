@@ -89,6 +89,15 @@ int main(int argc, char *argv[])
                 char buffer[buffersize];
                 char *bufferptr;
 
+                //facedetection needed data
+                char cascade_name[]="haarcascade_frontalface_alt.xml";
+                  // Load cascade
+                CvHaarClassifierCascade* classifier=(CvHaarClassifierCascade*)cvLoad(cascade_name, 0, 0, 0);
+                if(!classifier){
+                    fprintf(stderr,"ERROR: Could not load classifier cascade.");
+                    return -1;
+                }
+                CvMemStorage* facesMemStorage=cvCreateMemStorage(0);
          //Receive data here
                 int n,i;
             while(1){
@@ -116,34 +125,27 @@ int main(int argc, char *argv[])
                 IplImage* image_detect;
                 CvMat cvmat = cvMat(height, width, CV_8UC3, (void*)buffer);
                 image_detect = cvDecodeImage(&cvmat, 1);
-    char cascade_name[]="/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml";
-    // Load cascade
-    CvHaarClassifierCascade* classifier=(CvHaarClassifierCascade*)cvLoad(cascade_name, 0, 0, 0);
-    if(!classifier){
-        fprintf(stderr,"ERROR: Could not load classifier cascade.");
-        return -1;
-    }
-    CvMemStorage* facesMemStorage=cvCreateMemStorage(0);
-    IplImage* tempFrame=cvCreateImage(cvSize(image_detect->width, image_detect->height), IPL_DEPTH_8U, image_detect->nChannels);
-    if(image_detect->origin==IPL_ORIGIN_TL){
-        cvCopy(image_detect, tempFrame, 0);    }
-    else{
-        cvFlip(image_detect, tempFrame, 0);    }
-    cvClearMemStorage(facesMemStorage);
-CvSeq* faces=cvHaarDetectObjects(tempFrame, classifier, facesMemStorage, 1.1, 3, CV_HAAR_DO_CANNY_PRUNING, cvSize(min_face_width, min_face_height), cvSize(0,0));
-    if(faces){
-        for(i=0; i<faces->total; ++i){
-            // Setup two points that define the extremes of the rectangle,
-            // then draw it to the image
-            CvPoint point1, point2;
-            CvRect* rectangle = (CvRect*)cvGetSeqElem(faces, i);
-            point1.x = rectangle->x;
-            point2.x = rectangle->x + rectangle->width;
-            point1.y = rectangle->y;
-            point2.y = rectangle->y + rectangle->height;
-            cvRectangle(tempFrame, point1, point2, CV_RGB(255,0,0), 3, 8, 0);
-        }
-    }
+
+                IplImage* tempFrame=cvCreateImage(cvSize(image_detect->width, image_detect->height), IPL_DEPTH_8U, image_detect->nChannels);
+                if(image_detect->origin==IPL_ORIGIN_TL){
+                    cvCopy(image_detect, tempFrame, 0);    }
+                else{
+                    cvFlip(image_detect, tempFrame, 0);    }
+                cvClearMemStorage(facesMemStorage);
+                CvSeq* faces=cvHaarDetectObjects(tempFrame, classifier, facesMemStorage, 1.1, 3, CV_HAAR_DO_CANNY_PRUNING, cvSize(min_face_width, min_face_height), cvSize(0,0));
+                if(faces){
+                    for(i=0; i<faces->total; ++i){
+                        // Setup two points that define the extremes of the rectangle,
+                        // then draw it to the image
+                        CvPoint point1, point2;
+                        CvRect* rectangle = (CvRect*)cvGetSeqElem(faces, i);
+                        point1.x = rectangle->x;
+                        point2.x = rectangle->x + rectangle->width;
+                        point1.y = rectangle->y;
+                        point2.y = rectangle->y + rectangle->height;
+                        cvRectangle(tempFrame, point1, point2, CV_RGB(255,0,0), 3, 8, 0);
+                    }
+                }
                 cvNamedWindow("window",CV_WINDOW_AUTOSIZE);
                 cvShowImage("window", tempFrame);
                 cvReleaseImage(&image_detect);
