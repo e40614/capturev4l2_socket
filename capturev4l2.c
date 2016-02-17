@@ -11,6 +11,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <netinet/in.h>
 #include <netdb.h> 
+#include <signal.h>
 
 int width;
 int height;
@@ -19,6 +20,9 @@ int height;
 
 
 uint8_t *buffer;
+uint32_t buf_len;
+int camerafd;
+
  
 static int xioctl(int fd, int request, void *arg)
 {
@@ -153,6 +157,7 @@ int init_mmap(int fd, int sockfd)
 
     int n;
     buffer = mmap (NULL, buf.length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, buf.m.offset);
+    buf_len = buf.length;
     printf("Length: %d\nAddress: %p\n", buf.length, buffer);
     printf("Image Length: %d\n", buf.bytesused);
  
@@ -212,11 +217,18 @@ if(!camActive){
          printf("ERROR writing to socket");
 
  
-    cvWaitKey(100);
+    cvWaitKey(15);
 
     return 0;
 }
- 
+void ctrlC(int sig){ // can be called asynchronously
+    if (-1 == munmap(buffer, buf_len))
+            fprintf(stderr,"munmap");
+    if (-1 == close(camerafd))
+            fprintf(stderr,"close");
+    printf("ByeBye!!\n");
+    exit(0);
+}
 int main(int argc, char *argv[])
 {
     char camera_device[30] = "/dev/video";
@@ -224,7 +236,7 @@ int main(int argc, char *argv[])
     int sockfd, portno, n;
     struct sockaddr_in serv_addr;
     struct hostent *server;
-
+    signal(SIGINT, ctrlC);
 
     switch(argc){
         case 3:
@@ -273,6 +285,7 @@ int main(int argc, char *argv[])
             perror("Opening video device");
             return 1;
     }
+    camerafd = fd;
     if(print_caps(fd, sockfd))
         return 1;
     
