@@ -175,6 +175,8 @@ int capture_and_send_image(int fd, int sockfd)
     char rec;
     struct v4l2_buffer buf = {0};
     int n;
+    char *bufferptr;
+    int framesize;
     buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     buf.memory = V4L2_MEMORY_MMAP;
     buf.index = 0;
@@ -183,7 +185,7 @@ int capture_and_send_image(int fd, int sockfd)
         perror("Query Buffer");
         return 1;
     }
-    n = read(sockfd,&rec,1);
+
 if(!camActive){ 
     if(-1 == xioctl(fd, VIDIOC_STREAMON, &buf.type))
     {
@@ -210,17 +212,21 @@ if(!camActive){
         return 1;
     }
 
-
+    
     n = write(sockfd,(char*)&buf.bytesused,4);
     if (n < 0) 
          printf("ERROR writing to socket");
-
-    n = write(sockfd,buffer,buf.bytesused);
-    if (n < 0) 
-         printf("ERROR writing to socket");
-
+    bufferptr = buffer;
+    framesize = buf.bytesused;
+    while( (n = write(sockfd,bufferptr,framesize)) != framesize){
+        if (n < 0) 
+             printf("ERROR writing to socket");
+        bufferptr += n;
+        framesize -= n;
+    }
+     n = read(sockfd,&rec,1);
  
-    cvWaitKey(15);
+    // cvWaitKey(1);
 
     return 0;
 }
