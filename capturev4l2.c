@@ -12,24 +12,34 @@
 #include <netinet/in.h>
 #include <netdb.h> 
 #include <signal.h>
+#include <getopt.h> 
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 
-int width;
-int height;
-// int realwidth;
-// int realheight;
+
+
 struct buffer {
 		void   *start;
 		size_t  length;
 };
 
-int n_buffers;  
-struct buffer    *buffers;
-uint32_t buf_len;
-int camerafd;
-char camera_device[30];
+unsigned int 	 n_buffers;  
+struct buffer   *buffers;
+uint32_t 		 buf_len;
+int  			 camerafd = -1;
+int 			 sockfd = -1;
+struct sockaddr_in serv_addr;
+char 			*camera_device;
+int 			 width = 640;
+int 			 height = 480;
+char 			*frame_fmt;
+int              frame_count = 100;
 
+static void errno_exit(const char *s)
+{
+        fprintf(stderr, "%s error %d, %s\n", s, errno, strerror(errno));
+        exit(EXIT_FAILURE);
+}
 
 static int xioctl(int fd, int request, void *arg)
 {
@@ -362,43 +372,12 @@ void ctrlC(int sig){ // can be called asynchronously
 		printf("ByeBye!!\n");
 		exit(0);
 }
-int main(int argc, char *argv[])
-{
-		// char camera_device[30] = "/dev/video";
-		int fd;
-		int sockfd, portno, n;
-		struct sockaddr_in serv_addr;
-		struct hostent *server;
-		signal(SIGINT, ctrlC);
 
-		strcpy(camera_device,"/dev/video");
-		switch(argc){
-				case 3:
-						width = 640;
-						height = 480;
-						strcat(camera_device,"0");
-						break;
-				case 5:
-						width = atoi(argv[3]);
-						height = atoi(argv[4]);
-						strcat(camera_device,"0");
-						break;
-				case 6:
-						width = atoi(argv[3]);
-						height = atoi(argv[4]);
-						strcat(camera_device,argv[5]);
-						break;
-				default:
-						printf("Usage: ./CVclient <server ip> <server port> <video width> <video hight> <camera device>\n");
-						return -1; 
-		}
-		portno = atoi(argv[2]);
-		sockfd = socket(AF_INET, SOCK_STREAM, 0);
-
+int sock_init(struct hostent *server, int portno){
+		int netfd = socket(AF_INET, SOCK_STREAM, 0);
 		/* open socket and connect to server */
-		if (sockfd < 0) 
+		if (netfd < 0) 
 				printf("ERROR opening socket");
-		server = gethostbyname(argv[1]);
 		if (server == NULL) {
 				fprintf(stderr,"ERROR, no such host\n");
 				exit(0);
@@ -409,8 +388,137 @@ int main(int argc, char *argv[])
 						(char *)&serv_addr.sin_addr.s_addr,
 						server->h_length);
 		serv_addr.sin_port = htons(portno);
-		if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
+		if (connect(netfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
 				printf("ERROR connecting");
+		return netfd;
+}
+
+static void usage(FILE *fp, int argc, char **argv)
+{
+        fprintf(fp,
+                 "Usage: %s [options]\n\n"
+                 "Options:\n"
+                 "-d | --device name   Video device name [%s]\n"
+                 "-h | --help          Print this message\n"
+                 "-f | --format        [h264] or [mjpeg]\n"
+		 		 "-x | --width         Frame width [640]\n"
+		 		 "-y | --height        Frame height [480]\n"
+		 		 "-p | --port          Server port [5000]\n"
+		 		 "-i | --ip            Server ip [127.0.0.1]\n"
+                 "-c | --count         Number of frames to grab [%i] - use 0 for infinite\n"
+                 "\n"
+		 "Example usage: capture -f h264 -x 1280 -y 720 -c 300\n"
+		 "Captures 300 frames of H264 at 1280x720\n",
+                 argv[0], camera_device, frame_count);
+}
+
+static const char short_options[] = "d:hf:x:y:p:i:c:";
+static const struct option
+long_options[] = {
+        { "device", required_argument, NULL, 'd' },
+        { "help",   no_argument,       NULL, 'h' },
+        { "format", required_argument, NULL, 'f' },
+        { "width",  required_argument, NULL, 'x' },
+        { "height", required_argument, NULL, 'y' },
+        { "port",   required_argument, NULL, 'p' },
+        { "ip",     required_argument, NULL, 'i' },
+        { "count",  required_argument, NULL, 'c' },
+        { 0, 0, 0, 0 }
+};
+
+int main(int argc, char *argv[])
+{
+		camera_device = "/dev/video0";
+		frame_fmt ="mjpeg";
+		int portno = 5000;
+		int fd, n;
+		
+		struct hostent *server = gethostbyname("127.0.0.1");
+
+        for (;;) {
+                int idx;
+                int c;
+
+                c = getopt_long(argc, argv, short_options, long_options, &idx);
+
+                if (-1 == c)
+                        break;
+
+                switch (c) {
+	                case 0: /* getopt_long() flag */
+	                        break;
+
+	                case 'd':
+	                        camera_device = optarg;
+	                        break;
+
+	                case 'h':
+	                        usage(stdout, argc, argv);
+	                        exit(EXIT_SUCCESS);
+
+	                case 'f':
+	                        frame_fmt = optarg;
+	                        break;
+	                case 'x':
+	                        errno = 0;
+	                        width = strtol(optarg, NULL, 0);
+	                        if (errno)
+	                                errno_exit(optarg);
+	                        break;
+	                case 'y':
+	                        errno = 0;
+	                        height = strtol(optarg, NULL, 0);
+	                        if (errno)
+	                                errno_exit(optarg);
+	                        break;
+	                case 'p':
+	                        errno = 0;
+	                        portno = strtol(optarg, NULL, 0);
+	                        if (errno)
+	                                errno_exit(optarg);
+	                        break;	  
+	                case 'i':
+	                        errno = 0;
+	                        server = gethostbyname(optarg);
+	                        if (errno)
+	                                errno_exit(optarg);
+	                        break;	
+	                case 'c':
+	                        errno = 0;
+	                        frame_count = strtol(optarg, NULL, 0);
+	                        if (errno)
+	                                errno_exit(optarg);
+	                        break;
+
+	                default:
+	                        usage(stderr, argc, argv);
+	                        exit(EXIT_FAILURE);
+                }
+        }		
+
+		// switch(argc){
+		// 		case 3:
+		// 				width = 640;
+		// 				height = 480;
+		// 				strcat(camera_device,"0");
+		// 				break;
+		// 		case 5:
+		// 				width = atoi(argv[3]);
+		// 				height = atoi(argv[4]);
+		// 				strcat(camera_device,"0");
+		// 				break;
+		// 		case 6:
+		// 				width = atoi(argv[3]);
+		// 				height = atoi(argv[4]);
+		// 				strcat(camera_device,argv[5]);
+		// 				break;
+		// 		default:
+		// 				printf("Usage: ./CVclient <server ip> <server port> <video width> <video hight> <camera device>\n");
+		// 				return -1; 
+		// }
+		// portno = atoi(argv[2]);
+		sockfd = sock_init(server, portno);
+
 
 		/* open camera and initialize */
 		fd = open(camera_device, O_RDWR);
@@ -426,6 +534,7 @@ int main(int argc, char *argv[])
 		if(init_mmap(fd, sockfd))
 				return 1;
 
+		signal(SIGINT, ctrlC);
 		/*send image */
 		capture_and_send_image(fd, sockfd);
 
